@@ -16,7 +16,7 @@ def get_data():
     Xt = test_data.values[:, 1:]
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
-    
+
     print("get_data() done")
     return X_train, X_test, y_train, y_test, Xt
 
@@ -31,7 +31,7 @@ def preprocessing(X_train, X_test, Xt):
     X_train_pca = pca.fit_transform(X_train)
     X_test_pca = pca.transform(X_test)
     Xt_pca = pca.transform(Xt)
-    
+
     print("preprocessing() done")
     # return X_train_std, X_test_std, Xt_std
     return X_train_pca, X_test_pca, Xt_pca
@@ -60,7 +60,7 @@ def make_submission_file(y_pred):
     submission.to_csv("real_submission.csv", index=False)
 
     print("make_submission_file() done")
-    
+
 
 def main():
     pre_file_path = "real_submission.csv"
@@ -68,7 +68,7 @@ def main():
         os.remove(pre_file_path)
 
     X_train, X_test, y_train, y_test, Xt = get_data()
-    
+
     X_train_std, X_test_std, Xt_std = preprocessing(X_train, X_test, Xt)
 
     y_pred = learning(X_train_std, X_test_std, y_train, y_test, Xt_std)
