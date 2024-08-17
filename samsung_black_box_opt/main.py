@@ -1,61 +1,48 @@
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.linear_model import Ridge
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.decomposition import PCA
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import seaborn as sns
+import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 import os
 
 
 def get_data():
     train_data = pd.read_csv("./data/train.csv")
     test_data = pd.read_csv("./data/test.csv")
+    train_data = train_data.drop(['x_0', 'x_3'], axis=1)
+    test_data = test_data.drop(['x_0', 'x_3'], axis=1)
+
     X = train_data.values[:, 1:-1]
     y = train_data.values[:, -1]
     Xt = test_data.values[:, 1:]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
+    Xt = scaler.transform(Xt)
+
+    pca = PCA(n_components=4)
+    X = pca.fit_transform(X)
+    Xt = pca.transform(Xt)
+    print(X.shape)
+    print(Xt.shape)
+
+    # print(train_data)
+    # sns.pairplot(train_data)
+    # plt.show()
+    X = torch.FloatTensor(X.astype("float64"))
+    y = torch.FloatTensor(y.astype("float64")).unsqueeze(1)
+    Xt = torch.FloatTensor(Xt.astype("float64"))
 
     print("get_data() done")
-    return X_train, X_test, y_train, y_test, Xt
-
-
-def preprocessing(X_train, X_test, Xt):
-    # stdsc = StandardScaler()
-    # X_train_std = stdsc.fit_transform(X_train)
-    # X_test_std = stdsc.transform(X_test)
-    # Xt_std = stdsc.transform(Xt)
-
-    pca = PCA(n_components=8)
-    X_train_pca = pca.fit_transform(X_train)
-    X_test_pca = pca.transform(X_test)
-    Xt_pca = pca.transform(Xt)
-
-    print("preprocessing() done")
-    # return X_train_std, X_test_std, Xt_std
-    return X_train_pca, X_test_pca, Xt_pca
-
-
-def learning(X_train, X_test, y_train, y_test, Xt):
-    poly = PolynomialFeatures(degree=8, include_bias=False)
-    X_poly = poly.fit_transform(X_train)
-    X_test_poly = poly.fit_transform(X_test)
-    Xt_poly = poly.fit_transform(Xt)
-
-    lr = Ridge(alpha=0.01)
-    lr.fit(X_poly, y_train)
-    print('Training accuracy:', lr.score(X_poly, y_train))
-    print('Test accuracy:', lr.score(X_test_poly, y_test))
-    y_pred = lr.predict(Xt_poly)
-
-    print("learning() done")
-    return y_pred
+    return X, y, Xt
 
 
 def make_submission_file(y_pred):
     submission = pd.read_csv("./data/sample_submission.csv")
-    submission["y"] = y_pred
+    submission["y"] = y_pred.detach().cpu()
 
     submission.to_csv("real_submission.csv", index=False)
 
@@ -63,16 +50,47 @@ def make_submission_file(y_pred):
 
 
 def main():
+    print(torch.cuda.is_available())
+    print(torch.cuda.get_device_name(0))
     pre_file_path = "real_submission.csv"
     if os.path.isfile(pre_file_path):
         os.remove(pre_file_path)
 
-    X_train, X_test, y_train, y_test, Xt = get_data()
+    X, y, Xt = get_data()
 
-    X_train_std, X_test_std, Xt_std = preprocessing(X_train, X_test, Xt)
+    # model = nn.Linear(11, 1)
+    model = nn.Linear(4, 1)
 
-    y_pred = learning(X_train_std, X_test_std, y_train, y_test, Xt_std)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(device)
 
+    model = model.to(device)
+    X, y, Xt, = X.to(device), y.to(device), Xt.to(device)
+    print(next(model.parameters()).device)
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.1)
+    print("initial setting done")
+
+    print(X.shape)
+    print(Xt.shape)
+
+    for epoch in range(1, 100001):
+        output = model(X)
+        cost = criterion(output, y)
+
+        optimizer.zero_grad()
+        cost.backward()
+        optimizer.step()
+
+        if epoch % 100 == 0:
+            print(f"Epoch : {epoch}, Model : {list(model.parameters())}, Cost : {cost}")
+
+        if cost < 1:
+            break
+
+    print(list(model.parameters()))
+    y_pred = model(Xt)
     make_submission_file(y_pred)
 
 
