@@ -12,8 +12,8 @@ import os
 def get_data():
     train_data = pd.read_csv("./data/train.csv")
     test_data = pd.read_csv("./data/test.csv")
-    train_data = train_data.drop(['x_0', 'x_3'], axis=1)
-    test_data = test_data.drop(['x_0', 'x_3'], axis=1)
+    train_data = train_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
+    test_data = test_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
 
     X = train_data.values[:, 1:-1]
     y = train_data.values[:, -1]
