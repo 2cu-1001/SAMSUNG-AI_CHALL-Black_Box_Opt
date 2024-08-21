@@ -1,19 +1,22 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
 import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import os
+from copy import deepcopy
 
 
 def get_data():
     train_data = pd.read_csv("./data/train.csv")
     test_data = pd.read_csv("./data/test.csv")
-    train_data = train_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
-    test_data = test_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
+    # train_data = train_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
+    # test_data = test_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
 
     X = train_data.values[:, 1:-1]
     y = train_data.values[:, -1]
@@ -23,11 +26,24 @@ def get_data():
     X = scaler.fit_transform(X)
     Xt = scaler.transform(Xt)
 
-    pca = PCA(n_components=4)
+    pca = PCA(n_components=0.7)
     X = pca.fit_transform(X)
+    dim = pca.n_components_
+
     Xt = pca.transform(Xt)
     print(X.shape)
     print(Xt.shape)
+
+    if dim == 2:
+        plt.scatter(X[:, 0], X[:, 1])
+        plt.scatter(Xt[:, 0], Xt[:, 1])
+        plt.show()
+    elif dim == 3:
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+        ax.scatter(X[:, 0], X[:, 1], X[:, 2])
+        ax.scatter(Xt[:, 0], Xt[:, 1], Xt[:, 2])
+        plt.show()
 
     # print(train_data)
     # sns.pairplot(train_data)
@@ -37,7 +53,7 @@ def get_data():
     Xt = torch.FloatTensor(Xt.astype("float64"))
 
     print("get_data() done")
-    return X, y, Xt
+    return X, y, Xt, dim
 
 
 def make_submission_file(y_pred):
@@ -56,10 +72,10 @@ def main():
     if os.path.isfile(pre_file_path):
         os.remove(pre_file_path)
 
-    X, y, Xt = get_data()
+    X, y, Xt, dim = get_data()
 
     # model = nn.Linear(11, 1)
-    model = nn.Linear(4, 1)
+    model = nn.Linear(dim, 1)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
@@ -69,13 +85,13 @@ def main():
     print(next(model.parameters()).device)
 
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.1)
+    optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-4)
     print("initial setting done")
 
     print(X.shape)
     print(Xt.shape)
 
-    for epoch in range(1, 100001):
+    for epoch in range(1, 250001):
         output = model(X)
         cost = criterion(output, y)
 
@@ -91,6 +107,18 @@ def main():
 
     print(list(model.parameters()))
     y_pred = model(Xt)
+
+    if dim == 2:
+        X = X.cpu().numpy()
+        Xt = Xt.cpu().numpy()
+        y = y.cpu().numpy()
+        y_pred = y_pred.cpu().detach().numpy()
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+        ax.scatter(X[:, 0], X[:, 1], y)
+        ax.scatter(Xt[:, 0], Xt[:, 1], y_pred)
+        plt.show()
+
     make_submission_file(y_pred)
 
 
