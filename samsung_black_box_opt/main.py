@@ -37,15 +37,7 @@ class Model(nn.Module):
         x = self.dropout3(x)
         return self.sigmoid(self.output_layer(x))
 
-# def get_data():
-#
-# def preprocessing():
-
-
-def main():
-    start_time = time.time()
-    print(torch.cuda.is_available())
-    print(torch.cuda.get_device_name(0))
+def load_data():
     pre_file_path = "real_submission.csv"
     if os.path.isfile(pre_file_path):
         os.remove(pre_file_path)
@@ -57,6 +49,10 @@ def main():
     test_data = pd.read_csv("./data/test.csv")
     print("load data : done")
 
+    return train_data, test_data
+
+
+def preprocessing(train_data, test_data):
     drop_data = ['x_0', 'x_1', 'x_2', 'x_3']
     train_data = train_data.drop(drop_data, axis=1)
     test_data = test_data.drop(drop_data, axis=1)
@@ -88,7 +84,6 @@ def main():
             y.append(new_y)
 
     print("generate new train data : done")
-    print(time.time() - start_time)
 
     for i in range(test_sz):
         if i % 100 == 0:
@@ -100,8 +95,11 @@ def main():
             Xt.append(new_Xt)
 
     print("generate new test data : done")
-    print(time.time() - start_time)
 
+    return X, y, Xt, dim, test_sz
+
+
+def init_model(X, y, Xt, dim):
     X = torch.FloatTensor(X)
     y = torch.FloatTensor(y).unsqueeze(1)
     Xt = torch.FloatTensor(Xt)
@@ -118,6 +116,10 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     print("initialize model : done")
 
+    return X, y, Xt, model, criterion, optimizer, device
+
+
+def training(X, y, Xt, model, criterion, optimizer, test_sz, device):
     for epoch in range(1, 1001):
         output = model(X)
         cost = criterion(output, y)
@@ -134,6 +136,7 @@ def main():
 
     tmp_pred = model(Xt).squeeze(1)
     final_pred = torch.FloatTensor([0 for i in range(test_sz)]).to(device)
+
     print(tmp_pred.size())
     print(final_pred.size())
 
@@ -145,8 +148,23 @@ def main():
             print(cnt)
         tmp_pred_file.write(f"{cur_pred}\n")
 
-
     print("predict and make submission file : done")
+
+
+def main():
+    start_time = time.time()
+    print(torch.cuda.is_available())
+    print(torch.cuda.get_device_name(0))
+
+    train_data, test_data = load_data()
+
+    X, y, Xt, dim, test_sz = preprocessing(train_data, test_data)
+
+    print("cur taken time :", time.time() - start_time)
+
+    X, y, Xt, model, criterion, optimizer, device = init_model(X, y, Xt, dim)
+
+    training(X, y, Xt, model, criterion, optimizer, test_sz, device)
 
 
 if __name__ == "__main__":
