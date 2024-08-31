@@ -11,114 +11,102 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from umap import UMAP
 import os
+import time
 from copy import deepcopy
 
 
 class Model(nn.Module):
     def __init__(self, dim):
         super(Model, self).__init__()
-        self.layer1 = nn.Linear(dim, 1)
-        self.bn1 = nn.BatchNorm1d(1)
-        # self.dropout1 = nn.Dropout(0.5)
-        # self.layer2 = nn.Linear(6, 3)
-        # self.bn2 = nn.BatchNorm1d(3)
-        # self.dropout2 = nn.Dropout(0.5)
-        # self.layer3 = nn.Linear(3, 2)
-        # self.bn3 = nn.BatchNorm1d(2)
-        # self.dropout3 = nn.Dropout(0.5)
-        self.output_layer = nn.Linear(1, 1)
+        self.layer1 = nn.Linear(dim, 8)
+        self.dropout1 = nn.Dropout(0.5)
+        self.layer2 = nn.Linear(8, 4)
+        self.dropout2 = nn.Dropout(0.5)
+        self.layer3 = nn.Linear(4, 2)
+        self.dropout3 = nn.Dropout(0.5)
+        self.output_layer = nn.Linear(2, 1)
+        self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = self.relu(self.layer1(x))
-        x = self.bn1(x)
-        # x = self.dropout1(x)
-        # x = self.relu(self.layer2(x))
-        # x = self.bn2(x)
-        # x = self.dropout2(x)
-        # x = self.relu(self.layer3(x))
-        # x = self.bn3(x)
-        # x = self.dropout3(x)
-        return self.output_layer(x)
+        x = self.sigmoid(self.layer1(x))
+        x = self.dropout1(x)
+        x = self.sigmoid(self.layer2(x))
+        x = self.dropout2(x)
+        x = self.sigmoid(self.layer3(x))
+        x = self.dropout3(x)
+        return self.sigmoid(self.output_layer(x))
 
-
-def get_data():
-    train_data = pd.read_csv("./data/train.csv")
-    test_data = pd.read_csv("./data/test.csv")
-    train_data = train_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
-    test_data = test_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
-
-    # sns.pairplot(train_data)
-    # plt.show()
-    # print(len(train_data))
-    # plt.scatter([i for i in range(len(train_data))], train_data['y'], s=2)
-    outlier = train_data[(abs((train_data['y'] - train_data['y'].mean()) / train_data['y'].std())) > 1.96].index
-    train_data = train_data.drop(outlier)
-    # plt.scatter([i for i in range(len(train_data))], train_data['y'], s=2, alpha=0.8)
-    # plt.show()
-
-    # train_data = train_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
-    # test_data = test_data.drop(['x_0', 'x_1', 'x_2', 'x_3'], axis=1)
-
-    X = train_data.values[:, 1:-1]
-    y = train_data.values[:, -1]
-    Xt = test_data.values[:, 1:]
-
-    # scaler = StandardScaler()
-    # X = scaler.fit_transform(X)
-    # Xt = scaler.transform(Xt)
-
-    dim = 7
-
-    # dim = 4
-    # lle = LocallyLinearEmbedding(n_components=dim)
-    # X = lle.fit_transform(X)
-    # Xt = lle.transform(Xt)
-
-    dim = 3
-    pca = PCA(n_components=dim)
-    X = pca.fit_transform(X)
-    Xt = pca.transform(Xt)
-    print(X.shape)
-    print(Xt.shape)
-
-    # dim = 4
-    # um = UMAP(n_components=dim, verbose=1)
-    # X = um.fit_transform(X)
-    # Xt = um.transform(Xt)
-
-    # print(train_data)
-    # sns.pairplot(train_data)
-    # plt.show()
-    X = torch.FloatTensor(X.astype("float64"))
-    y = torch.FloatTensor(y.astype("float64")).unsqueeze(1)
-    Xt = torch.FloatTensor(Xt.astype("float64"))
-
-    print("get_data() done")
-    return X, y, Xt, dim
-
-
-def make_submission_file(y_pred):
-    submission = pd.read_csv("./data/sample_submission.csv")
-    submission["y"] = y_pred.detach().cpu()
-
-    submission.to_csv("real_submission.csv", index=False)
-
-    print("make_submission_file() done")
+# def get_data():
+#
+# def preprocessing():
 
 
 def main():
+    start_time = time.time()
     print(torch.cuda.is_available())
     print(torch.cuda.get_device_name(0))
     pre_file_path = "real_submission.csv"
     if os.path.isfile(pre_file_path):
         os.remove(pre_file_path)
+    tmp_pred_file_path = "tmp_pred.txt"
+    if os.path.isfile(tmp_pred_file_path):
+        os.remove(tmp_pred_file_path)
 
-    X, y, Xt, dim = get_data()
+    train_data = pd.read_csv("./data/train.csv")
+    test_data = pd.read_csv("./data/test.csv")
+    print("load data : done")
 
-    # model = nn.Linear(11, 1)
+    drop_data = ['x_0', 'x_1', 'x_2', 'x_3']
+    train_data = train_data.drop(drop_data, axis=1)
+    test_data = test_data.drop(drop_data, axis=1)
+
+    outlier = train_data[(abs((train_data['y'] - train_data['y'].mean()) / train_data['y'].std())) > 1.96].index
+    train_data = train_data.drop(outlier)
+
+    pre_X = train_data.values[36000:37000, 1:-1]
+    pre_y = train_data.values[36000:37000, -1]
+    pre_Xt = test_data.values[:, 1:]
+
+    scaler = StandardScaler()
+    pre_X = scaler.fit_transform(pre_X)
+    pre_Xt = scaler.transform(pre_Xt)
+
+    X, y, Xt = [], [], []
+
+    train_sz = len(pre_X)
+    test_sz = len(pre_Xt)
+    dim = len(pre_X[0])
+
+    for i in range(train_sz):
+        if i % 100 == 0:
+            print(i)
+        for j in range(i + 1, train_sz):
+            new_X = [a - b for a, b in zip(pre_X[i], pre_X[j])]
+            new_y = 1 if pre_y[i] > pre_y[j] else 0
+            X.append(new_X)
+            y.append(new_y)
+
+    print("generate new train data : done")
+    print(time.time() - start_time)
+
+    for i in range(test_sz):
+        if i % 100 == 0:
+            print(i)
+        for j in range(test_sz):
+            if i == j:
+                continue
+            new_Xt = [a - b for a, b in zip(pre_Xt[i], pre_Xt[j])]
+            Xt.append(new_Xt)
+
+    print("generate new test data : done")
+    print(time.time() - start_time)
+
+    X = torch.FloatTensor(X)
+    y = torch.FloatTensor(y).unsqueeze(1)
+    Xt = torch.FloatTensor(Xt)
+
     model = Model(dim)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
 
@@ -126,14 +114,11 @@ def main():
     X, y, Xt, = X.to(device), y.to(device), Xt.to(device)
     print(next(model.parameters()).device)
 
-    criterion = nn.MSELoss()
+    criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    print("initial setting done")
+    print("initialize model : done")
 
-    print(X.shape)
-    print(Xt.shape)
-
-    for epoch in range(1, 100001):
+    for epoch in range(1, 1001):
         output = model(X)
         cost = criterion(output, y)
 
@@ -144,12 +129,24 @@ def main():
         if epoch % 100 == 0:
             print(f"Epoch : {epoch}, Model : {list(model.parameters())}, Cost : {cost}")
 
-        if cost < 100:
-            break
-
+    print("train data : done")
     print(list(model.parameters()))
-    y_pred = model(Xt)
-    make_submission_file(y_pred)
+
+    tmp_pred = model(Xt).squeeze(1)
+    final_pred = torch.FloatTensor([0 for i in range(test_sz)]).to(device)
+    print(tmp_pred.size())
+    print(final_pred.size())
+
+    tmp_pred_file = open("./tmp_pred.txt", "w")
+    cnt = 0
+    for cur_pred in tmp_pred:
+        cnt += 1
+        if cnt % 10000 == 0:
+            print(cnt)
+        tmp_pred_file.write(f"{cur_pred}\n")
+
+
+    print("predict and make submission file : done")
 
 
 if __name__ == "__main__":

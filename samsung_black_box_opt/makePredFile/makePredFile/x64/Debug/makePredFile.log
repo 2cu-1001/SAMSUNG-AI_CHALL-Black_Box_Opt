@@ -1,0 +1,5 @@
+﻿  main.cpp
+F:\pycharm\samsung_black_box_opt\makePredFile\makePredFile\main.cpp(31,18): warning C4129: 'p': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+F:\pycharm\samsung_black_box_opt\makePredFile\makePredFile\main.cpp(31,18): warning C4129: 's': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+F:\pycharm\samsung_black_box_opt\makePredFile\makePredFile\main.cpp(14,2): warning C4996: 'freopen': This function or variable may be unsafe. Consider using freopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  makePredFile.vcxproj -> F:\pycharm\samsung_black_box_opt\makePredFile\x64\Debug\makePredFile.exe
