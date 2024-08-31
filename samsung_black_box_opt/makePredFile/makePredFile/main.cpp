@@ -28,7 +28,7 @@ int main()
 		cnt++;
 	}
 
-	ofstream output("F:\pycharm\samsung_black_box_opt\real_submission.csv");
+	ofstream output("real_submission.csv");
 	output << "ID,y" << "\n";
 	for (int i = 0; i < testSz; i++) {
 		output << "TEST_"; 
