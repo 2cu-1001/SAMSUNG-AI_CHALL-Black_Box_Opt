@@ -18,30 +18,34 @@ from copy import deepcopy
 class Model(nn.Module):
     def __init__(self, dim):
         super(Model, self).__init__()
-        self.layer1 = nn.Linear(dim, 8)
+        self.layer1 = nn.Linear(dim, 4)
         self.dropout1 = nn.Dropout(0.5)
-        self.layer2 = nn.Linear(8, 4)
-        self.dropout2 = nn.Dropout(0.5)
-        self.layer3 = nn.Linear(4, 2)
-        self.dropout3 = nn.Dropout(0.5)
-        self.output_layer = nn.Linear(2, 1)
+        # self.layer2 = nn.Linear(8, 4)
+        # self.dropout2 = nn.Dropout(0.5)
+        # self.layer3 = nn.Linear(4, 2)
+        # self.dropout3 = nn.Dropout(0.5)
+        self.output_layer = nn.Linear(4, 1)
         self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
 
     def forward(self, x):
         x = self.sigmoid(self.layer1(x))
         x = self.dropout1(x)
-        x = self.sigmoid(self.layer2(x))
-        x = self.dropout2(x)
-        x = self.sigmoid(self.layer3(x))
-        x = self.dropout3(x)
+        # x = self.sigmoid(self.layer2(x))
+        # x = self.dropout2(x)
+        # x = self.sigmoid(self.layer3(x))
+        # x = self.dropout3(x)
         return self.sigmoid(self.output_layer(x))
+
 
 def load_data():
     pre_file_path = "real_submission.csv"
     if os.path.isfile(pre_file_path):
         os.remove(pre_file_path)
-    tmp_pred_file_path = "tmp_pred.txt"
+    tmp_pred_file_path = "./makePredFile/makePredFile/tmp_pred.txt"
+    if os.path.isfile(tmp_pred_file_path):
+        os.remove(tmp_pred_file_path)
+    tmp_pred_file_path = "./makePredFile/makePredFile/real_submission.csv"
     if os.path.isfile(tmp_pred_file_path):
         os.remove(tmp_pred_file_path)
 
@@ -60,8 +64,8 @@ def preprocessing(train_data, test_data):
     outlier = train_data[(abs((train_data['y'] - train_data['y'].mean()) / train_data['y'].std())) > 1.96].index
     train_data = train_data.drop(outlier)
 
-    pre_X = train_data.values[36000:37000, 1:-1]
-    pre_y = train_data.values[36000:37000, -1]
+    pre_X = train_data.values[30000:37000, 1:-1]
+    pre_y = train_data.values[30000:37000, -1]
     pre_Xt = test_data.values[:, 1:]
 
     scaler = StandardScaler()
@@ -113,7 +117,7 @@ def init_model(X, y, Xt, dim):
     print(next(model.parameters()).device)
 
     criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
     print("initialize model : done")
 
     return X, y, Xt, model, criterion, optimizer, device
@@ -131,16 +135,13 @@ def training(X, y, Xt, model, criterion, optimizer, test_sz, device):
         if epoch % 100 == 0:
             print(f"Epoch : {epoch}, Model : {list(model.parameters())}, Cost : {cost}")
 
-    print("train data : done")
     print(list(model.parameters()))
+    print("train data : done")
 
-    tmp_pred = model(Xt).squeeze(1)
-    final_pred = torch.FloatTensor([0 for i in range(test_sz)]).to(device)
+    tmp_pred = model(Xt).squeeze(1).detach().cpu()
+    tmp_pred_file = open("./makePredFile/makePredFile/tmp_pred.txt", "w")
+    print("predict : done")
 
-    print(tmp_pred.size())
-    print(final_pred.size())
-
-    tmp_pred_file = open("./tmp_pred.txt", "w")
     cnt = 0
     for cur_pred in tmp_pred:
         cnt += 1
@@ -148,7 +149,7 @@ def training(X, y, Xt, model, criterion, optimizer, test_sz, device):
             print(cnt)
         tmp_pred_file.write(f"{cur_pred}\n")
 
-    print("predict and make submission file : done")
+    print("make submission file : done")
 
 
 def main():
