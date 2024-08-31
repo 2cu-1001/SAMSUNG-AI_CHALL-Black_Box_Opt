@@ -28,6 +28,28 @@ int main()
 		cnt++;
 	}
 
+	/*
+	string inputPath = "tmp_pred.csv";
+	ifstream input(inputPath);
+	
+	cnt = 0;
+	getline(input, s);
+	while (getline(input, s)) {
+		cin >> s;
+		curPred = stof(s);
+		srcIdx = cnt / (testSz - 1);
+		mod = cnt % (testSz - 1);
+		dstIdx = (mod >= srcIdx) ? mod : mod + 1;
+
+		if (curPred >= 0.5) ans[srcIdx]++;
+		else ans[dstIdx]++;
+
+		if (cnt % 10000 == 0) cout << cnt << "\n";
+		cnt++;
+	}
+	input.close();
+	*/
+
 	ofstream output("real_submission.csv");
 	output << "ID,y" << "\n";
 	for (int i = 0; i < testSz; i++) {
