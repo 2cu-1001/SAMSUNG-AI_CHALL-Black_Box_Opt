@@ -1,4 +1,6 @@
 #include <bits/stdc++.h>
+#include <iostream>
+
 #define testSz 4986
 using namespace std;
 
@@ -24,7 +26,7 @@ int main()
 		if (curPred >= 0.5) ans[srcIdx]++;
 		else ans[dstIdx]++;
 
-		if (cnt % 10000 == 0) cout << cnt << "\n";
+		if (cnt % 100000 == 0) cout << cnt << "\n";
 		cnt++;
 	}
 

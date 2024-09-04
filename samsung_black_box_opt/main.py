@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -26,10 +27,10 @@ class Model(nn.Module):
         # self.dropout3 = nn.Dropout(0.5)
         self.output_layer = nn.Linear(4, 1)
         self.sigmoid = nn.Sigmoid()
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
 
     def forward(self, x):
-        x = self.sigmoid(self.layer1(x))
+        x = self.relu(self.layer1(x))
         x = self.dropout1(x)
         # x = self.sigmoid(self.layer2(x))
         # x = self.dropout2(x)
@@ -58,19 +59,25 @@ def load_data():
 
 def preprocessing(train_data, test_data):
     drop_data = ['x_0', 'x_1', 'x_2', 'x_3']
+    drop_data = []
     train_data = train_data.drop(drop_data, axis=1)
     test_data = test_data.drop(drop_data, axis=1)
 
     outlier = train_data[(abs((train_data['y'] - train_data['y'].mean()) / train_data['y'].std())) > 1.96].index
     train_data = train_data.drop(outlier)
 
-    pre_X = train_data.values[30000:37000, 1:-1]
-    pre_y = train_data.values[30000:37000, -1]
+    pre_X = train_data.values[:, 1:-1]
+    pre_y = train_data.values[:, -1]
     pre_Xt = test_data.values[:, 1:]
 
     scaler = StandardScaler()
     pre_X = scaler.fit_transform(pre_X)
     pre_Xt = scaler.transform(pre_Xt)
+
+    # dim = 4
+    # pca = PCA(n_components=dim)
+    # pre_X = pca.fit_transform(pre_X)
+    # pre_Xt = pca.transform(pre_Xt)
 
     X, y, Xt = [], [], []
 
@@ -78,14 +85,22 @@ def preprocessing(train_data, test_data):
     test_sz = len(pre_Xt)
     dim = len(pre_X[0])
 
-    for i in range(train_sz):
-        if i % 100 == 0:
-            print(i)
-        for j in range(i + 1, train_sz):
-            new_X = [a - b for a, b in zip(pre_X[i], pre_X[j])]
-            new_y = 1 if pre_y[i] > pre_y[j] else 0
-            X.append(new_X)
-            y.append(new_y)
+    grid_sz = 700
+    for k in range(0, train_sz - grid_sz, grid_sz):
+        cur_st, cur_ed = k, k + grid_sz
+        if k % 1000 == 0:
+            print("grid :", k)
+
+        for i in range(cur_st, cur_ed):
+            if i % 100 == 0:
+                print(i)
+            for j in range(i + 1, cur_ed):
+                new_X = [a - b for a, b in zip(pre_X[i], pre_X[j])]
+                new_y = 1 if pre_y[i] > pre_y[j] else 0
+                X.append(new_X)
+                y.append(new_y)
+
+    print("X size :", len(X))
 
     print("generate new train data : done")
 
@@ -117,16 +132,18 @@ def init_model(X, y, Xt, dim):
     print(next(model.parameters()).device)
 
     criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.SGD(model.parameters(), lr=50)
     print("initialize model : done")
 
     return X, y, Xt, model, criterion, optimizer, device
 
 
 def training(X, y, Xt, model, criterion, optimizer, test_sz, device):
-    for epoch in range(1, 1001):
-        output = model(X)
-        cost = criterion(output, y)
+    for epoch in range(1, 15001):
+        # output = model(X)
+        # cost = criterion(output, y)
+        hypothesis = model(X)
+        cost = F.binary_cross_entropy(hypothesis, y)
 
         optimizer.zero_grad()
         cost.backward()
