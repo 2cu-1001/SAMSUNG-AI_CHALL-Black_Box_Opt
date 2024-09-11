@@ -23,15 +23,15 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.layer1 = nn.Linear(dim, 1)
         self.bn1 = nn.BatchNorm1d(1)
-        # self.dropout1 = nn.Dropout(0.2)
-        # self.layer2 = nn.Linear(4, 2)
-        # self.bn2 = nn.BatchNorm1d(2)
+        # self.dropout1 = nn.Dropout(0.5)
+        # self.layer2 = nn.Linear(6, 3)
+        # self.bn2 = nn.BatchNorm1d(3)
         # self.dropout2 = nn.Dropout(0.5)
         # self.layer3 = nn.Linear(3, 2)
         # self.bn3 = nn.BatchNorm1d(2)
         # self.dropout3 = nn.Dropout(0.5)
         self.output_layer = nn.Linear(1, 1)
-        self.relu = nn.LeakyReLU()
+        self.relu = nn.ReLU()
         
         self._initialize_weights()
     
@@ -39,7 +39,7 @@ class Model(nn.Module):
     def _initialize_weights(self):
         for module in self.modules():
             if isinstance(module, nn.Linear):
-                init.xavier_uniform_(module.weight, gain=20.0)
+                init.xavier_uniform_(module.weight, gain=5.0)
                 if module.bias is not None:
                     init.ones_(module.bias)
                     
@@ -158,8 +158,6 @@ def main():
     print(X.shape)
     print(Xt.shape)
 
-    hist = []
-    
     for epoch in range(1, 100001):
         output = model(X)
         cost = criterion(output, y)
@@ -170,13 +168,10 @@ def main():
 
         if epoch % 100 == 0:
             print(f"Epoch : {epoch}, Model : {list(model.parameters())}, Cost : {cost}")
-            hist.append(cost.detach().cpu())
 
-        if cost < 2:
+        if cost < 100:
             break
 
-    plt.plot(hist)
-    plt.show()
     print(list(model.parameters()))
     y_pred = model(Xt)
     make_submission_file(y_pred)
