@@ -1,1 +1,1 @@
-# SAMSUNG-AI_CHALL-Black-Box-Opt
+# SAMSUNG-AI_CHALL-Black_Box_Opt
